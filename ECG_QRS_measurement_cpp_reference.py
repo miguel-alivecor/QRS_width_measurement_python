@@ -519,12 +519,12 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
             # v2 ----->
             # if np.max(aux[:20]) > 0.555:
             if np.max(aux[:25]) > 0.155: # <----- v2
-                log('MeasureQRSWidth J-Point.3.9')
                 inx1 = np.where(np.max(aux[:20]) == aux[:20])[0][0]
+                log('MeasureQRSWidth J-Point.3.9 inx1: %s' % inx1)
                 aux_tmp = aux[inx1: inx1 + 20]
                 inx = np.where(np.abs(aux_tmp) <= 4e-2)[0]
                 if len(inx) > 0:
-                    log('MeasureQRSWidth J-Point.3.9.1')
+                    log('MeasureQRSWidth J-Point.3.9.1 inx: %s' % inx[0])
                     inx = inx[0] + inx1
                     inxTot += inx
 

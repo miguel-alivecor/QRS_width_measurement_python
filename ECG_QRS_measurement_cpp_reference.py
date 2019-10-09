@@ -126,6 +126,7 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
         # beat amplitude normalization used to reduce the dispersion of the derivatives magnitude range
         norm_coeff = np.abs(beat_avg[qrs_peak_inx])
         norm_coeff2 = norm_coeff
+        log('MeasureQRSWidth norm_coeff: %s' % norm_coeff)
         beat_wave_lpf_norm = beat_avg / norm_coeff
         beat_wave_diff = np.diff(beat_wave_lpf_norm)
 

@@ -548,6 +548,8 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
                             inxTot += inx
 
         jp = qrs_peak_inx + 1 + inxTot
+        log('MeasureQRSWidth J-Point jp: %s' % jp)
+
         # print('jp: {}'.format(jp))
         # <------------------------------------------ J-point location
 
@@ -748,24 +750,20 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
 
         # print('inxtot: {}'.format(inxTot))
         qrs_start_inx = qrs_peak_inx - 1 - inxTot
-
+        log('MeasureQRSWidth QRS onset qrs_start_inx: %s' % qrs_start_inx)
 
         # v2 - -->
         # if np.abs(beat_avg0[qrs_start_inx]) > 0.169: # potential baseline distortion
         #     avg_beat_features['CI'] = 0 # <---- v2
 
-
         if debug_flag:
             plt.plot(qrs_start_inx, beat_wave_lpf_norm[qrs_start_inx], 'o')
 
-
         QRS_int = (jp - qrs_start_inx) / Fs * 1e3  # ms
-
 
         log('MeasureQRSWidth QRS onset qrs_interval: %s' % QRS_int)
 
         # <----------------------------------------------------- QRS onset
-
 
         if debug_flag:
             print('QRS_int: {:}'.format(QRS_int))
@@ -774,8 +772,6 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
             plt.plot(qrs_peak_inx, beat_avg0[qrs_peak_inx], 'o')
             plt.plot(jp, beat_avg0[jp], 'o')
             plt.plot(qrs_start_inx, beat_avg0[qrs_start_inx], 'o')
-
-
 
         # P-wave location --------------------------------------------------------------------------------------->
         negative_p_det = False
@@ -798,7 +794,6 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
             # pr_threshold = 0.011
             pr_threshold = 0.008
             log('MeasureQRSWidth P Wave.5 pr_threshold: %s' % pr_threshold)
-
 
         polarity = -np.sign(int(inv_polarity) - 0.9) # False -> 1; True -> -1
         search_shift = 7

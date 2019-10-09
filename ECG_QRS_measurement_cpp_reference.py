@@ -142,7 +142,7 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
         # 'distor_ratio': baseline variation w.r.t. the QRS estimated amplitude
         # 'noise_var': average beat 'smoothness' estimation
         distor_ratio = (np.abs(beat_avg0[0]) + np.abs(beat_avg0[-1])) / (beat_avg0[qrs_peak_p_inx - inxs] - beat_avg0[qrs_peak_n_inx - inxs])
-        log('MeasureQRSWidth quality assessment distort_ratio: %s' % distort_ratio)
+        log('MeasureQRSWidth quality assessment distort_ratio: %s' % distor_ratio)
 
         if debug_flag:
             print('distor ratio : {:.2f}'.format(distor_ratio*100))
@@ -935,5 +935,6 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
 
         return ([], avg_beat_features)
 
-    except:
+    except Exception as e:
+        log('Exception: ', str(e))
         return ('QRS measurement error.', avg_beat_features)

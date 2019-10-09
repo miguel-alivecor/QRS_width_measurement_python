@@ -437,20 +437,24 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
                     log('MeasureQRSWidth J-Point.3.6.2')
                     inxTot = inxTotCpy
 
-
             double_bump_flag = False
 
             if norm_coeff >= 0.19:
                 thresh2 = -0.025
+                log('MeasureQRSWidth J-Point.3.7 thresh2: %s' % thresh2)
             else:
                 thresh2 = -0.0105
-
-
+                log('MeasureQRSWidth J-Point.3.8 thresh2: %s' % thresh2)
 
             # wide QRS (2)
+            log('MeasureQRSWidth J-Point.3 np.max(aux[8:21]): %s' % np.max(aux[8:21]))
+            log('MeasureQRSWidth J-Point.3 np.min(aux[20:50]): %s' % np.min(aux[20:50]))
+            log('MeasureQRSWidth J-Point.3 high_slope_flag: %s' % high_slope_flag)
+            log('MeasureQRSWidth J-Point.3 np.max(aux[:8]): %s' % np.max(aux[:8]))
+
             if (HR < 183 and np.max(aux[8:21]) > 1.965e-2 and np.min(aux[20:50]) > thresh2 and not high_slope_flag) or \
                     (np.max(aux[:8] > 9.3e-2) and HR < 134):
-                log('MeasureQRSWidth J-Point.3.7')
+                log('MeasureQRSWidth J-Point.3.9')
 
                 aux_tmp = aux
                 inxTotCpy = inxTot
@@ -463,19 +467,19 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
                 # if QS_flag and aux[0] < 0.1:
                 if QS_flag and aux[0] < 7.6e-2: # <----- v2
                     thresh2 = 5e-3
-                    log('MeasureQRSWidth J-Point.3.7.1 thresh2: %s' % thresh2)
+                    log('MeasureQRSWidth J-Point.3.9.1 thresh2: %s' % thresh2)
                 elif norm_coeff >= 0.38 or np.max(aux_tmp[:8]) > 8e-2:
                     thresh2 = 0.02
-                    log('MeasureQRSWidth J-Point.3.7.2 thresh2: %s' % thresh2)
+                    log('MeasureQRSWidth J-Point.3.9.2 thresh2: %s' % thresh2)
                 else:
                     thresh2 = 0.00375
-                    log('MeasureQRSWidth J-Point.3.7.3 thresh2: %s' % thresh2)
+                    log('MeasureQRSWidth J-Point.3.9.3 thresh2: %s' % thresh2)
 
                 inx1 = np.where(np.abs(aux) <= thresh2)[0]
                 if len(inx1) == 0:
                     inx1 = [np.Inf]
                 elif inx1[0] == 0:
-                    log('MeasureQRSWidth J-Point.3.7.4')
+                    log('MeasureQRSWidth J-Point.3.9.4')
                     inx1 = np.where(np.abs(aux) <= 5e-3)[0]
                     if len(inx1) == 0:
                         inx1 = [np.Inf]
@@ -490,14 +494,13 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
 
 
                 if inx >= 23 or (inx >= 19 and QS_flag):  # rollback
-                    log('MeasureQRSWidth J-Point.3.7.5')
+                    log('MeasureQRSWidth J-Point.3.9.5')
                     aux = aux_tmp
                     inxTot = inxTotCpy
 
-
             # wide QRS (3)
             elif np.min(aux[:10]) < -3e-2 and np.max(aux[10:20]) < 0.075 and inx_aux < 64 and np.where(aux[1:] > 0)[0][0] < 36:
-                log('MeasureQRSWidth J-Point.3.8')
+                log('MeasureQRSWidth J-Point.3.10')
                 inx = np.where(aux[:10] == np.min(aux[:10]))[0][0]
                 inxTot += inx
                 aux = aux[inx:]
@@ -520,17 +523,17 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
             # if np.max(aux[:20]) > 0.555:
             if np.max(aux[:25]) > 0.155: # <----- v2
                 inx1 = np.where(np.max(aux[:20]) == aux[:20])[0][0]
-                log('MeasureQRSWidth J-Point.3.9 inx1: %s' % inx1)
+                log('MeasureQRSWidth J-Point.3.11 inx1: %s' % inx1)
                 aux_tmp = aux[inx1: inx1 + 20]
                 inx = np.where(np.abs(aux_tmp) <= 4e-2)[0]
                 if len(inx) > 0:
-                    log('MeasureQRSWidth J-Point.3.9.1 inx: %s' % inx[0])
+                    log('MeasureQRSWidth J-Point.3.11.1 inx: %s' % inx[0])
                     inx = inx[0] + inx1
                     inxTot += inx
 
                 # 2nd slurring
                 if np.min(aux[:5]) < -0.01450 and not double_bump_flag:
-                    log('MeasureQRSWidth J-Point.3.9.2')
+                    log('MeasureQRSWidth J-Point.3.11.2')
                     inx1 = np.where(aux > 0)[0]
                     if len(inx1) == 0:
                         inx1 = [np.Inf]
@@ -544,7 +547,7 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs = 300, log=print):
                         inx2 = inx2[inx2 > 2]
                         inx = int(np.min([inx1[0], inx2[0]]))
                         if inx < 19:
-                            log('MeasureQRSWidth J-Point.3.9.2.1')
+                            log('MeasureQRSWidth J-Point.3.11.2.1')
                             inxTot += inx
 
         jp = qrs_peak_inx + 1 + inxTot

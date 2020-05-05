@@ -157,10 +157,14 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
 
         # look for potential distorted/noisy beats, or beats where we are not confident on an accurate
         # measurement (unusual morphologies)
+        # to check: maybe lower 18 -> 17 on cond 4
+        # to check: maybe reject at dist>14 noise>17, for any norm_coeff
+        # to check: maybe reject at dist>10 noise>17, for  norm_coeff < .26
         low_ci_flag_1 = False; low_ci_flag_2 = False
         if distor_ratio * 100 > 59 or\
            (noise_ratio * 100 > 10 and norm_coeff < 0.065) or \
-           (distor_ratio * 100 > 8 and noise_ratio * 100 > 18 and norm_coeff < 0.2) or \
+           (distor_ratio * 100 > 8 and noise_ratio * 100 > 21 and norm_coeff < 0.31) or \
+           (distor_ratio * 100 > 8 and noise_ratio * 100 > 17 and norm_coeff < 0.2) or \
            (distor_ratio * 100 >= 4 and noise_ratio * 100 >= 7 and norm_coeff < 0.05) or \
            (distor_ratio * 100 >= 27 and noise_ratio * 100 >= 10 and norm_coeff < 0.17):
             log('MeasureQRSWidth quality assessment.1')
@@ -168,6 +172,8 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
         if (distor_ratio * 100 >= 14.7 and noise_ratio * 100 >= 11 and norm_coeff < 0.35) or \
            (distor_ratio * 100 >= 30 and noise_ratio * 100 >= 9 and norm_coeff < 0.2) or \
            (noise_ratio * 100 >= 12 and norm_coeff < 0.11) or \
+           (distor_ratio * 100 >= 19 and noise_ratio * 100 >= 7 and norm_coeff < 0.2) or \
+           (distor_ratio * 100 >= 5 and noise_ratio * 100 >= 23 and norm_coeff < 0.32) or  \
            (distor_ratio * 100 >= 6 and noise_ratio * 100 >= 16 and norm_coeff < 0.2):
             log('MeasureQRSWidth quality assessment.2')
             low_ci_flag_1 = True  # discard only if p-wave not found
@@ -205,45 +211,50 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
 
         # Assuming max(deriv) and min(deriv) correspond to the up/down slopes of the P-wave, their position
         # with respect to each other indicates the polarity of the wave.
-        deriv_pmax_inx = np.where(deriv[:-8] == np.max(deriv[:-8]))[0][0]
+        correction = -4 if HR > 85 else 0
+        deriv_pmax_inx = np.where(deriv[:-4 + correction] == np.max(deriv[:-4 + correction]))[0][0]
         deriv_nmin_inx = np.where(deriv[:-4] == np.min(deriv[:-4]))[0][0]
 
         # If the baseline before the QRS seems to oscillate, don't look for P-wave evidence.
         # Potential oscillations are detected by looking for high amplitude derivatives on the baseline, other than
         # 'deriv_pmax_inx' and 'deriv_nmin_inx'.
         wavy_baseline_flag = False
-        if deriv_pmax_inx < (len(deriv) - 20):
-            inx = np.where(deriv[deriv_pmax_inx + 10:-8] == np.max(deriv[deriv_pmax_inx + 10:-8]))[0][0]
-            if inx > 4 and deriv[deriv_pmax_inx + 10 + inx]/deriv[deriv_pmax_inx] > 0.71:
-                wavy_baseline_flag = True
-        elif 10 < deriv_pmax_inx:
-            inx = np.where(deriv[:deriv_pmax_inx - 9] == np.max(deriv[:deriv_pmax_inx - 9]))[0][0]
-            if 0 < deriv[deriv_pmax_inx] / deriv[inx] < 1.55 and (deriv_pmax_inx - inx) > 20:
-                wavy_baseline_flag = True
-        elif 2 < deriv_nmin_inx < (len(deriv) - 10 - 4):
-            inx = np.where(deriv[deriv_nmin_inx + 10:-4] == np.min(deriv[deriv_nmin_inx + 10:-4]))[0][0]
-            if inx > 10 and deriv[deriv_nmin_inx + 10 + inx] / deriv[deriv_nmin_inx] > 0.61:
-                wavy_baseline_flag = True
-            else:
-                inx = np.where(deriv[:np.max([1, deriv_nmin_inx - 4])] ==
-                               np.min(deriv[:np.max([1, deriv_nmin_inx - 4])]))[0][0]
-                if (deriv_nmin_inx - inx) > 24 and deriv[inx] / deriv[deriv_nmin_inx] > 0.53:
+        aux = np.abs(deriv)
+        inx = np.where(aux == np.max(aux))[0][0]
+        if not (aux[inx] > 0.38 and 8 < inx < (len(aux) - 8)):
+            if deriv_pmax_inx < (len(deriv) - 20):
+                inx = np.where(deriv[deriv_pmax_inx + 10:-8] == np.max(deriv[deriv_pmax_inx + 10:-8]))[0][0]
+                if inx >= 4 and deriv[deriv_pmax_inx + 10 + inx]/deriv[deriv_pmax_inx] > 0.71:
                     wavy_baseline_flag = True
+            if 10 < deriv_pmax_inx:
+                inx = np.where(deriv[:deriv_pmax_inx - 9] == np.max(deriv[:deriv_pmax_inx - 9]))[0][0]
+                if 0 < deriv[deriv_pmax_inx] / deriv[inx] < 1.55 and (deriv_pmax_inx - inx) > 20:
+                    wavy_baseline_flag = True
+            if 2 < deriv_nmin_inx < (len(deriv) - 10 - 4):
+                inx = np.where(deriv[deriv_nmin_inx + 10:-4] == np.min(deriv[deriv_nmin_inx + 10:-4]))[0][0]
+                if inx > 6 and deriv[deriv_nmin_inx + 10 + inx] / deriv[deriv_nmin_inx] > 0.57:
+                    wavy_baseline_flag = True
+                else:
+                    inx = np.where(deriv[:np.max([1, deriv_nmin_inx - 5])] ==
+                                   np.min(deriv[:np.max([1, deriv_nmin_inx - 5])]))[0][0]
+                    if (deriv_nmin_inx - inx) > 18 and deriv[inx] / deriv[deriv_nmin_inx] > 0.53:
+                        wavy_baseline_flag = True
 
 
         cond6 = True
         # Try to avoid scenarios where max(deriv) and/or min(deriv) don't correspond to P-wave slopes. For example, when
         # the sample (x2, y2) is not between the P-wave and the QRS but rather on the P-wave or the QRS.
+        #
         if not wavy_baseline_flag \
            and np.max(np.abs([deriv[deriv_pmax_inx], deriv[deriv_nmin_inx]])) > .0395 \
            and len(deriv) > 30 and np.abs(slope) < 4.5e-3 \
            and deriv_pmax_inx > 1 \
            and deriv_nmin_inx > 1 \
-           and np.abs(deriv_nmin_inx - deriv_pmax_inx) < 38 \
+           and np.abs(deriv_nmin_inx - deriv_pmax_inx) < 28 \
            and np.abs(deriv_nmin_inx - deriv_pmax_inx)/len(deriv) < .39 \
            and np.min(np.abs([deriv[deriv_pmax_inx], deriv[deriv_nmin_inx]])) > .027 \
            and not (deriv[deriv_pmax_inx - 1] < 0 and deriv[deriv_pmax_inx + 1] < 0) \
-           and not (noise_ratio*100 > 13 and norm_coeff < 0.12):
+           and not (noise_ratio*100 > 13.1 and norm_coeff < 0.12):
             # P-wave evidence found
             log('P-wave evidence.')
             if (deriv_nmin_inx < deriv_pmax_inx):
@@ -277,14 +288,14 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
             log('MeasureQRSWidth J-Point.1')
             inxTot = 0  # QS morphology; use right peak as J-point
             aux = beat_wave_diff[qrs_peak_inx + 1:]
-            if np.min(aux[:8]) < -3e-2:
+            if np.min(aux[:8]) < -1.6e-2:
                 log('MeasureQRSWidth J-Point.1.1')
                 inx1 = np.where(aux[:8] == np.min(aux[:8]))[0][0]
                 inx = np.where(np.abs(aux[inx1:15]) < 1e-2)[0][0]
                 inxTot += inx1 + inx
         else:
             log('MeasureQRSWidth J-Point.2')
-            thresh = 0.0113333 if norm_coeff < 1.2 else 2e-3
+            thresh = 0.0113333 if norm_coeff < 1.2 else 2e-3 
 
             aux = beat_wave_diff[qrs_peak_inx + 1:]
             aux3 = beat_wave_lpf_norm[qrs_peak_inx + 1:]
@@ -303,6 +314,7 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
             cond2 = np.min(aux[30:110]) <= -1.84e-3
             cond3 = not (np.min(aux2[1:10]) < -1.5e-2 and np.max(aux[1:10]) < 0
                     and len(np.where(np.diff(np.sign(aux2[0:10])) < 0)[0]) > 1 and inx_aux < 55)
+            # cond4 = qrs_peak_inx == p2 - inxs
             cond5 = not (np.mean(aux3[35:70]) < -0.25 and np.mean(abs(aux[35:70])) < 0.005)
 
 
@@ -340,6 +352,15 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
                     if inx.size > 0:
                         log('MeasureQRSWidth J-Point.2.2.1.1')
                         inxTot += np.max([inx[0] - 1, 0])
+                elif np.min(aux[:5]) < -0.054:
+                    log('MeasureQRSWidth J-Point.2.2.2')
+                    inx = np.where(np.abs(aux[:20]) < 6e-3)[0]
+                    if inx.size > 0:
+                        inxTot += inx[0]
+                        log('MeasureQRSWidth J-Point.2.2.2.1')
+
+
+
             else:
                 log('MeasureQRSWidth J-Point.2.3')
                 # Most general case. Start search from R-wave peak.
@@ -406,8 +427,8 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
                 else:
                     thresh1 = 4e-3
 
-                if np.max(aux[:9]) > thresh1 and not slur_flag and abs_peak_max > 0.15:  # additional non-negligible
-                                                                                         # slope increase
+                if np.max(aux[:9]) > thresh1 and not slur_flag and abs_peak_max > 0.155:  # additional non-negligible
+                                                                                          # slope increase
                     log('MeasureQRSWidth J-Point.2.3.2')
                     aux_tmp = aux
                     inxTotCpy = inxTot
@@ -477,11 +498,11 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
 
                 # wide QRS (1)
                 thresh1 = -4.5e-2 if norm_coeff < 0.25 else -3e-2
-                if np.min(aux[6:15]) < thresh1:
+                if np.min(aux[5:15]) < thresh1:
                     log('MeasureQRSWidth J-Point.2.3.3')
-                    inx = np.where(aux[6:15] == np.min(aux[6:15]))[0][0]
-                    inxTot += inx + 6
-                    aux = aux[inx + 6:]
+                    inx = np.where(aux[5:15] == np.min(aux[5:15]))[0][0]
+                    inxTot += inx + 5
+                    aux = aux[inx + 5:]
                     inx1 = np.where(np.abs(aux) <= thresh)[0]
                     if len(inx1) == 0:
                         inx1 = [np.Inf]
@@ -559,15 +580,16 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
 
 
                 # wide QRS (4)
-                if (np.max(aux[:23]) > 0.0425 and not high_slope_flag) or \
-                   (np.max(aux[10:25]) > 0.06) or \
+                if (np.max(aux[:23]) > 0.0425 and not high_slope_flag and norm_coeff > 0.09) or \
+                   (np.max(aux[10:25]) > 0.06 and norm_coeff > 0.09) or \
                    (np.max(aux[:25]) > 0.029 and slur_flag and norm_coeff > 0.18) or \
-                   np.max(aux[:25]) > 0.03 and QS_flag:
+                   (np.max(aux[:25]) > 0.03 and QS_flag):
                     inx1 = np.where(np.max(aux[:20]) == aux[:20])[0][0]
                     log('MeasureQRSWidth J-Point.2.3.6 inx1: %s' % inx1)
                     aux_tmp = aux[inx1: inx1 + 20]
                     inx = np.where(np.abs(aux_tmp) <= aux[inx1]/4)[0]
-                    if len(inx) > 0:
+                    if len(inx) > 0 and np.min(aux[inx[0] + inx1:inx[0] + inx1 + 8]) > -0.14 and \
+                                               np.max(aux[inx[0] + inx1:inx[0] + inx1 + 13]) < 0.04:
                         log('MeasureQRSWidth J-Point.2.3.6.1 inx: %s' % inx[0])
                         inx = inx[0] + inx1
                         inxTot += inx
@@ -591,10 +613,10 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
             log('MeasureQRSWidth QRS onset.0')
             low_ci_flag_2 = True  # discard measurement; no derivative >=0 to the left of the QRS
 
-        if np.min(aux[:20]) <= -1.1e-2 and QS_flag and (qrs_peak_inx == p1 - inxs) and\
+        if np.min(aux[:16]) <= -1.1e-2 and QS_flag and (qrs_peak_inx == p1 - inxs) and\
                 ((beat_wave_lpf_norm[qrs_peak_inx] - beat_wave_lpf_norm[qrs_peak_inx - 2]) > -1.2e-2):#\
                 # and (beat_wave_lpf_norm[qrs_peak_inx] - beat_wave_lpf_norm[jp]) > 0.25: # try removing the last condition
-                                                                                        # example: file '30956-278c72c2527', K2500.
+                                                                                          # example: file '30956-278c72c2527', K2500.
             # overrule QS-like morphology detection
             log('MeasureQRSWidth QRS onset.1')
             norm_coeff = np.abs(beat_avg[qrs_peak_inx])
@@ -657,7 +679,7 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
                     aux = aux[inx + inx2[0]:]
                     inxTot += inx + inx2[0]
 
-            thresh1 = 5e-3 if norm_coeff > .66 else 0.0125
+            thresh1 = 5e-3 if norm_coeff > .66 else 0.0105
 
             # 2nd pass
             # look for Q deflection
@@ -691,15 +713,15 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
 
                 thresh1 = -3.5e-3 if norm_coeff > 0.18 else -0.015
                 if (inx <= 18 and np.max(aux[inx5 + 1:inx5 + 1 + 5]) < 0.0125
-                    and not (np.min(aux[inx5:inx5 + 25]) < thresh1 and inx >= 9 and np.max(aux[inx5:inx5 + 20]) < 0.013)) or \
-                        (beat_avg[qrs_peak_inx] > 1.1 and np.min(aux[inx5:inx5 + 17]) > -2.1e-3) or \
-                        (inx <= 19 and inx5 == inx4 and np.max(aux[10:20]) > 0.015) or \
-                        (inx <= 19 and np.abs(inx5 - inx4) <= 1 and np.min(aux[inx5 + 4:inx5 + 20]) > -3.5e-3) or \
-                        (QS_flag and (np.max(aux[:15]) > 6.7e-2 or aux[0] > 0.032)):
+                    and not (np.min(aux[inx5:inx5 + 25]) < thresh1 and inx >= 9)) or \
+                   (beat_avg[qrs_peak_inx] > 1.1 and np.min(aux[inx5:inx5 + 17]) > -2.1e-3) or \
+                   (inx <= 19 and inx5 == inx4 and np.max(aux[10:20]) > 0.015) or \
+                   (inx <= 19 and np.abs(inx5 - inx4) <= 1 and np.min(aux[inx5 + 4:inx5 + 18]) > -4.2e-3) or \
+                   (QS_flag and (np.max(aux[:15]) > 6.7e-2 or aux[0] > 0.032)):
 
                     log('MeasureQRSWidth QRS onset.3.3.3')
                     inxTot += np.max([inx - 2, 0])
-                    aux = aux[np.max([inx - 2, 0]):]
+                    aux = aux[inx5:]
                 else: # rollback
                     log('MeasureQRSWidth QRS onset.3.3.4')
                     aux = aux_tmp
@@ -730,8 +752,9 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
                     (aux[0] > 0.05 and np.min(aux[:15]) < -0.079) or\
                     (aux[0] > 0.06 and np.min(aux[:15]) < -0.035) or\
                     (np.min(aux[:15]) < -0.2 and np.max(aux[:15]) > -0.12 and qrs_peak_inx == (p2 - inxs)) or \
-                    (np.min(aux[:20]) < -0.15 and np.max(aux[:20]) < 0.04) or \
+                    (np.min(aux[:20]) < -0.11 and np.max(aux[:20]) < 0.04) or \
                     (np.min(aux[:21]) < -0.06 and np.max(aux[:20]) > 0.1 and norm_coeff < 0.25) or \
+                    (np.min(aux[:21]) < -0.06 and np.max(aux[:20]) > 0.085 and norm_coeff < 0.45) or \
                     (np.min(aux[:20]) < -0.015 and np.max(aux[:20]) > 0.18 and norm_coeff > 0.8) or \
                     (QS_flag and qrs_peak_inx == p1 - inxs) or \
                     (QS_flag and np.min(aux[:20]) < -1.4e-2 and norm_coeff > 0.07) or \
@@ -780,7 +803,7 @@ def ECG_QRS_measurement(beat_avg, medianRR, Fs=300, log=print):
             if norm_coeff < 0.5 and aux[inx1] < -0.035 and np.sum(aux[1:10] > 0) < 2:
                 inx = np.where(aux[inx1:15] > 0)[0]
                 log('MeasureQRSWidth QRS onset.3.7')
-                if inx.size > 0:
+                if inx.size > 0 and np.max(aux[inx1 + inx[0]:inx1 + inx[0] + 15]) < 0.03:
                     log('MeasureQRSWidth QRS onset.3.7.1')
                     inxTot += inx1 + inx[0] - 2
                     aux = aux[inx1 + inx[0]:]
